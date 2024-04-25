@@ -1,0 +1,91 @@
+#The following codes were developed in pycaret enviroment
+
+#For all experiments the following bibletecs must be installed
+%pip install pandas
+%pip install matplotlib
+%pip install numpy
+%pip install shap
+%pip install pycaret
+%pip install pycaret[full]
+%pip install optuna
+
+#NOTE: The data shared does not contain data from private patients (identified by RD), therefore the setting up must be adapted. 
+
+#Standard set-up for each experiment
+from pycaret.classification import setup, compare_models, tune_model, ensemble_model, blend_models, stack_models, automl, predict_model, evaluate_model, get_config
+import pandas as pd
+
+# Loading the dataset
+file_path = 'data_after_smote_combined_22dez.xlsx'
+dataset = pd.read_excel(file_path)
+
+# Splitting the data into training data and unseen data
+data_train = dataset[~dataset['ID'].str.startswith('RD')]
+data_unseen = dataset[dataset['ID'].str.startswith('RD')]
+data_train.reset_index(drop=True, inplace=True)
+data_unseen.reset_index(drop=True, inplace=True)
+
+# Assuming 'TARGET' is the target variable in all datasets
+target_variable = 'TARGET'
+
+# Setting up the environment in PyCaret
+# Creating an experiment for the first dataset
+exp1 = setup(data=data_train, target=target_variable, session_id=123,
+             preprocess=True, normalize=False, remove_multicollinearity=True, multicollinearity_threshold=0.8,
+             fix_imbalance=False, remove_outliers=True, feature_selection=False, pca=True, pca_components=0.95,
+             ignore_features=['ID'])
+
+## Comparing models
+top5 = compare_models(n_select=5, sort='Accuracy')
+
+# Tuning models
+tuned_top5 = [tune_model(i) for i in top5]
+
+# Testing tuned models on the test set and unseen data
+for model in tuned_top5:
+    print(f"Tuned Model: {model}")
+    predict_model(model)
+    evaluate_model(model)
+    unseen_results = predict_model(model, data=data_unseen)
+    print("Results on Unseen Data:")
+    #print(unseen_results)
+
+# Ensembling the models
+bagged_top5 = [ensemble_model(i) for i in tuned_top5]
+
+# Testing ensemble models on the test set and unseen data
+for model in bagged_top5:
+    print(f"Ensemble Model: {model}")
+    predict_model(model)
+    evaluate_model(model)
+    unseen_results = predict_model(model, data=data_unseen)
+    print("Results on Unseen Data:")
+   #print(unseen_results)
+
+# Blending models
+blender = blend_models(estimator_list=top5)
+print(f"Blended Model: {blender}")
+predict_model(blender)
+evaluate_model(blender)
+blender_unseen_results = predict_model(blender, data=data_unseen)
+print("Blended Model Results on Unseen Data:")
+#print(blender_unseen_results)
+
+# Stacking models
+stacker = stack_models(estimator_list=top5)
+print(f"Stacked Model: {stacker}")
+predict_model(stacker)
+evaluate_model(stacker)
+stacker_unseen_results = predict_model(stacker, data=data_unseen)
+print("Stacked Model Results on Unseen Data:")
+#print(stacker_unseen_results)
+
+# AutoML optimizing for Accuracy
+best = automl(optimize='Accuracy')
+print(f"Best Model via AutoML: {best}")
+predict_model(best)
+evaluate_model(best)
+best_unseen_results = predict_model(best, data=data_unseen)
+print("Best Model via AutoML Results on Unseen Data:")
+#print(best_unseen_results)
+
