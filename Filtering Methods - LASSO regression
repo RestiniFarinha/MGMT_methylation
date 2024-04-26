@@ -1,0 +1,106 @@
+# 10-fold cross-validation
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LassoCV
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import matplotlib.pyplot as plt
+
+# Load the data
+data = pd.read_excel('data_after_smote_combined_22dec.xlsx')
+
+# Remove the 'ID' column if present
+data = data.drop(columns=['ID'], errors='ignore')
+
+# Prepare explanatory variables (X) and target variable (y)
+X = data.drop('TARGET', axis=1)
+y = data['TARGET']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Preprocessor for numeric and categorical variables
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), X_train.select_dtypes(include=['int64', 'float64']).columns),
+        ('cat', OneHotEncoder(), X_train.select_dtypes(include=['object']).columns)
+    ])
+
+# Fit the preprocessor and transform the training data
+X_train_preprocessed = preprocessor.fit_transform(X_train)
+
+# Create and fit the LASSO model
+lasso = LassoCV(cv=10, random_state=42)
+lasso.fit(X_train_preprocessed, y_train)
+
+# Model coefficients
+coef = lasso.coef_
+
+# Get the feature names after preprocessing
+feature_names = preprocessor.get_feature_names_out()
+
+# Create a DataFrame for the coefficients and feature names
+coef_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Coefficient': coef
+})
+
+# Filter to keep only variables with non-zero coefficients
+selected_coef_df = coef_df[coef_df['Coefficient'] != 0]
+
+# Sort the data by the absolute value of the coefficient for plotting
+selected_coef_df = selected_coef_df.reindex(selected_coef_df.Coefficient.abs().sort_values(ascending=False).index)
+
+# Create the bar chart
+plt.figure(figsize=(10, 8))
+plt.barh(selected_coef_df['Feature'], selected_coef_df['Coefficient'], color='black')
+plt.title('Significant Radiomic Features for Prognostication (LASSO)')
+plt.xlabel('Coefficient')
+plt.gca().invert_yaxis()  # Invert the y-axis to align with the provided figure
+plt.tight_layout()
+plt.show()
+
+# Print the names of the selected features
+print("Features selected by LASSO:")
+print(selected_coef_df['Feature'].tolist())
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Seaborn style settings
+sns.set_theme(style="whitegrid")
+
+# Create the bar chart
+plt.figure(figsize=(10, 8))
+bar_plot = plt.barh(selected_coef_df['Feature'], selected_coef_df['Coefficient'], color=sns.color_palette("viridis", len(selected_coef_df)))
+
+# Invert the y-axis to align with the provided figure
+plt.gca().invert_yaxis()
+
+# Add data labels to the bars
+for bar in bar_plot:
+    plt.text(
+        bar.get_width(),       # x position
+        bar.get_y() + bar.get_height() / 2,  # y position
+        f"{bar.get_width():.2f}",  # text
+        va='center',  # vertical alignment
+        ha='left'     # horizontal alignment
+    )
+
+# Title and axis labels
+plt.title('Significant Radiomic Features for Prognostication (LASSO)', fontsize=16)
+plt.xlabel('Coefficient', fontsize=14)
+plt.ylabel('Features', fontsize=14)
+
+# Adjust layout and show the graph
+plt.tight_layout()
+plt.show()
+
+# Print the names of the selected features
+print("Features selected by LASSO:")
+print(selected_coef_df['Feature'].tolist())
+
+# Print the found alpha value
+print("Found alpha value:", lasso.alpha_)
