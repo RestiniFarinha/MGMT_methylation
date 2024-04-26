@@ -1,0 +1,4 @@
+﻿This document provides general recommendations for the proper use of the shared codes. Firstly, it is important to note that the dataset included in the publication does not contain any data from private institutions. Instead, it includes only quantitative and qualitative data extracted from patients in the UPENN-GBM public dataset. Consequently, the code will need to be adapted at certain stages.
+
+
+The feature selection methods were applied to data that had already been normalized and balanced. Using these methods, new datasets were created and subsequently utilized within the PyCaret environment. The same setup was employed for each experiment. Deep learning algorithms were directly created using the available images.
