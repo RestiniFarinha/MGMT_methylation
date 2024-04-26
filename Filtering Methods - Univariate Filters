@@ -1,0 +1,113 @@
+#This code was used to select significant features by using ANOVA and Chi Square test using alfa as a hyperparameter and applying Bonferroni correction for multiple comparisons
+
+import pandas as pd
+from scipy.stats import chi2_contingency, f_oneway
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.ticker as ticker
+
+# Load the dataset
+data = pd.read_excel('data_after_smote_combined.xlsx')
+
+# Identify categorical and continuous variables
+# Assume categorical variables are those starting with 'CF'
+categorical_vars = [col for col in data.columns if col.startswith('CF')]
+continuous_vars = [col for col in data.columns if col not in categorical_vars and col != 'TARGET' and col != 'ID']
+
+# Alpha values to be tested
+alpha_values = [0.01, 0.05, 0.10]
+
+# Initialize lists to store significant variables for each alpha value
+significant_vars_by_alpha = {alpha: [] for alpha in alpha_values}
+
+# Loop over alpha values
+for alpha in alpha_values:
+    bonferroni_alpha = alpha / (len(categorical_vars) + len(continuous_vars))
+    significant_vars = []
+
+    # Tests for each variable
+    for var in categorical_vars + continuous_vars:
+        if var in categorical_vars:
+            contingency_table = pd.crosstab(data[var], data['TARGET'])
+            stat, p, _, _ = chi2_contingency(contingency_table)
+        else:
+            groups = data.groupby('TARGET')[var].apply(list)
+            stat, p = f_oneway(*groups)
+
+        significant = p < bonferroni_alpha
+        significant_vars.append((var, 'Categorical' if var in categorical_vars else 'Continuous', stat, p, significant))
+
+        if significant:
+            significant_vars_by_alpha[alpha].append(var)
+
+    # Plot the graph with test statistics
+    plt.figure(figsize=(16, 12))
+    df = pd.DataFrame(significant_vars, columns=['Variable', 'Type', 'Statistic', 'P-Value', 'Significant'])
+    sns.barplot(x='P-Value', y='Variable', data=df)
+    plt.title(f'P-Values of All Tested Variables (Alpha = {alpha})')
+    plt.xlabel('P-Value')
+    plt.ylabel('Variables')
+    plt.gca().xaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+    plt.axvline(x=bonferroni_alpha, color='red', linestyle='--')
+    plt.show()
+
+# Display significant variables for each alpha value
+for alpha, vars in significant_vars_by_alpha.items():
+    print(f"Significant Variables for Alpha = {alpha}:")
+    print(vars)
+
+#Now the code for performing the same process but not applying the bonferroni correction
+
+import pandas as pd
+from scipy.stats import chi2_contingency, f_oneway
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.ticker as ticker
+
+# Load the dataset
+data = pd.read_excel('data_after_smote_combined_22dec.xlsx')
+
+# Identify categorical and continuous variables
+categorical_vars = [col for col in data.columns if col.startswith('CF')]
+continuous_vars = [col for col in data.columns if col not in categorical_vars and col != 'TARGET' and col != 'ID']
+
+# Alpha values to be tested
+alpha_values = [0.01, 0.05, 0.10]
+
+# Initialize lists to store significant variables for each alpha value
+significant_vars_by_alpha = {alpha: [] for alpha in alpha_values}
+
+# Loop over alpha values
+for alpha in alpha_values:
+    significant_vars = []
+
+    # Tests for each variable
+    for var in categorical_vars + continuous_vars:
+        if var in categorical_vars:
+            contingency_table = pd.crosstab(data[var], data['TARGET'])
+            stat, p, _, _ = chi2_contingency(contingency_table)
+        else:
+            groups = data.groupby('TARGET')[var].apply(list)
+            stat, p = f_oneway(*groups)
+
+        significant = p < alpha
+        significant_vars.append((var, 'Categorical' if var in categorical_vars else 'Continuous', stat, p, significant))
+
+        if significant:
+            significant_vars_by_alpha[alpha].append(var)
+
+    # Plot the graph with test statistics
+    plt.figure(figsize=(16, 12))
+    df = pd.DataFrame(significant_vars, columns=['Variable', 'Type', 'Statistic', 'P-Value', 'Significant'])
+    sns.barplot(x='P-Value', y='Variable', data=df)
+    plt.title(f'P-Values of All Tested Variables (Alpha = {alpha})')
+    plt.xlabel('P-Value')
+    plt.ylabel('Variables')
+    plt.gca().xaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+    plt.axvline(x=alpha, color='red', linestyle='--')
+    plt.show()
+
+# Display significant variables for each alpha value
+for alpha, vars in significant_vars_by_alpha.items():
+    print(f"Significant Variables for Alpha = {alpha}:")
+    print(vars)
