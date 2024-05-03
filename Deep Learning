@@ -1,0 +1,172 @@
+import tensorflow as tf
+from tensorflow import keras
+from keras import layers
+from kerastuner.tuners import RandomSearch
+
+# Define number of classes (binary classification in this case)
+num_classes = 1
+
+# Function to build the model with hyperparameters
+def build_model(hp):
+  """
+  Builds a neural network model with hyperparameters.
+
+  Args:
+      hp (kerastuner.HyperParameters): Hyperparameters to be tuned.
+
+  Returns:
+      keras.Sequential: The constructed model.
+  """
+
+  model = keras.Sequential()
+
+  # Convolutional layers with hyperparameter tuning for filters
+  model.add(layers.Conv2D(filters=hp.Int('conv1_filters', min_value=16, max_value=64, step=32),
+                          kernel_size=(3, 3), activation='relu',
+                          input_shape=(img_size, img_size, 3)))
+  model.add(layers.MaxPooling2D((2, 2)))
+  model.add(layers.Conv2D(filters=hp.Int('conv2_filters', min_value=32, max_value=128, step=16),
+                          kernel_size=(3, 3), activation='relu'))
+  model.add(layers.MaxPooling2D((2, 2)))
+  model.add(layers.Conv2D(filters=hp.Int('conv3_filters', min_value=64, max_value=256, step=32),
+                          kernel_size=(3, 3), activation='relu'))
+  model.add(layers.MaxPooling2D((2, 2)))
+
+  # Flatten layer
+  model.add(layers.Flatten())
+
+  # Dense layers with hyperparameter tuning for units
+  model.add(layers.Dense(units=hp.Int('dense_units', min_value=32, max_value=128, step=16), activation='relu'))
+  model.add(layers.Dense(num_classes, activation='sigmoid'))
+
+  # Define optimizer, loss function, and metrics
+  model.compile(optimizer=keras.optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[1e-3, 1e-4, 1e-5])),
+                loss="binary_crossentropy",
+                metrics=['accuracy', 'mae'])
+
+  return model
+
+# Define the hyperparameter tuner and search space
+tuner = RandomSearch(
+    build_model,
+    objective='val_accuracy',
+    max_trials=10,
+    directory='hyperparameter3LCNN',
+    project_name='acr_quality_control'
+)
+
+# Calculate steps per epoch and validation steps (if applicable)
+steps_per_epoch = len(trainImages) // batch_size
+validation_steps = len(testImages) // batch_size  # Adjust if using validation data
+
+# Perform the hyperparameter search
+tuner.search(trainFlow, 
+             steps_per_epoch=steps_per_epoch, 
+             epochs=10, 
+             validation_data=valFlow, 
+             validation_steps=validation_steps)
+
+# Get the best hyperparameters and build the best model
+best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+best_model = tuner.hypermodel.build(best_hps)
+tuner.results_summary()
+
+# Train the model with the best hyperparameters
+history = best_model.fit(trainFlow,
+                         steps_per_epoch=steps_per_epoch,
+                         epochs=best_hps.get('epochs'),
+                         validation_data=valFlow,
+                         validation_steps=validation_steps,
+                         callbacks=callbacks_list,
+                         class_weight=class_weights,
+                         batch_size=best_hps.get('batch_size'))
+
+# Call your custom precision function to evaluate the 
+precision(best_model, history)
+CNN with 5 layers
+Import necessary libraries
+import tensorflow as tf
+from tensorflow import keras
+from keras import layers
+from kerastuner.tuners import RandomSearch
+
+# Define number of classes (binary classification in this case)
+num_classes = 1
+
+# Function to build the model with hyperparameters
+def build_model(hp):
+  """
+  Builds a neural network model with hyperparameters.
+
+  Args:
+      hp (kerastuner.HyperParameters): Hyperparameters to be tuned.
+
+  Returns:
+      keras.Sequential: The constructed model.
+  """
+
+  model = keras.Sequential()
+
+  # Convolutional layers with hyperparameter tuning for filters
+        model.add(layers.Conv2D(hp.Int('conv1_filters', 16, 64, step=32), (3, 3), activation='relu', input_shape=(img_size, img_size, 3)))
+        model.add(layers.MaxPooling2D((2, 2)))
+        model.add(layers.Conv2D(hp.Int('conv2_filters', 32, 128, step=16), (3, 3), activation='relu'))
+        model.add(layers.MaxPooling2D((2, 2)))
+        model.add(layers.Conv2D(hp.Int('conv3_filters', 64, 256, step=32), (3, 3), activation='relu'))
+        model.add(layers.MaxPooling2D((2, 2)))
+        model.add(layers.Conv2D(hp.Int('conv4_filters', 128, 512, step=64), (3, 3), activation='relu'))
+        model.add(layers.MaxPooling2D((2, 2)))
+        model.add(layers.Conv2D(hp.Int('conv5_filters', 512, 1024, step=128), (3, 3), activation='relu'))
+        model.add(layers.MaxPooling2D((2, 2)))
+
+  # Flatten layer
+  model.add(layers.Flatten())
+
+  # Dense layers with hyperparameter tuning for units
+  model.add(layers.Dense(units=hp.Int('dense_units', min_value=32, max_value=128, step=16), activation='relu'))
+  model.add(layers.Dense(num_classes, activation='sigmoid'))
+
+  # Define optimizer, loss function, and metrics
+  model.compile(optimizer=keras.optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[1e-3, 1e-4, 1e-5])),
+                loss="binary_crossentropy",
+                metrics=['accuracy', 'mae'])
+
+  return model
+
+# Define the hyperparameter tuner and search space
+tuner = RandomSearch(
+    build_model,
+    objective='val_accuracy',
+    max_trials=10,
+    directory='hyperparameter3LCNN',
+    project_name='acr_quality_control'
+)
+
+# Calculate steps per epoch and validation steps (if applicable)
+steps_per_epoch = len(trainImages) // batch_size
+validation_steps = len(testImages) // batch_size  # Adjust if using validation data
+
+# Perform the hyperparameter search
+tuner.search(trainFlow, 
+             steps_per_epoch=steps_per_epoch, 
+             epochs=10, 
+             validation_data=valFlow, 
+             validation_steps=validation_steps)
+
+# Get the best hyperparameters and build the best model
+best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+best_model = tuner.hypermodel.build(best_hps)
+tuner.results_summary()
+
+# Train the model with the best hyperparameters
+history = best_model.fit(trainFlow,
+                         steps_per_epoch=steps_per_epoch,
+                         epochs=best_hps.get('epochs'),
+                         validation_data=valFlow,
+                         validation_steps=validation_steps,
+                         callbacks=callbacks_list,
+                         class_weight=class_weights,
+                         batch_size=best_hps.get('batch_size'))
+
+# Call your custom precision function to evaluate the 
+precision(best_model, history)
